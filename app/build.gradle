@@ -1,0 +1,50 @@
+apply plugin: 'com.android.application'
+
+android {
+    compileSdkVersion 26
+    defaultConfig {
+        applicationId "droidguard.app.test"
+        minSdkVersion 15
+        targetSdkVersion 26
+        versionCode 5
+        versionName "1.4"
+    }
+    buildTypes {
+        release {
+            minifyEnabled true
+            shrinkResources true
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+        }
+    }
+    // CTRL Flow Enable (for applications)
+    applicationVariants.all { variant ->
+        variant.javaCompile.doLast {
+            runDroidGuard(variant)
+        }
+    }
+}
+
+dependencies {
+    implementation fileTree(dir: 'libs', include: ['*.jar'])
+    implementation 'com.android.support:appcompat-v7:26.1.0'
+}
+
+// CTRL Flow Config
+def runDroidGuard(variant) {
+    copy {
+        from "$rootDir/DroidGuard-U/droidguard-plug.xml"
+        into "$buildDir/intermediates/classes/"
+        expand(classesRoot: variant.javaCompile.destinationDir,
+                logFile: "droidguard-log-${variant.name}.xml")
+        rename('droidguard-plug.xml', "droidguard-plug-${variant.name}.xml")
+    }
+
+    new File("${variant.javaCompile.destinationDir}-obfuscated").deleteDir()
+    javaexec {
+        main = 'droidguard.Studio'
+        classpath = files("$rootDir/Droidguard-U/DroidGuard.jar")
+        args "$buildDir/intermediates/classes/droidguard-plug-${variant.name}.xml"
+    }
+    new File("${variant.javaCompile.destinationDir}").deleteDir()
+    new File("${variant.javaCompile.destinationDir}-obfuscated").renameTo(new File("${variant.javaCompile.destinationDir}"))
+}
